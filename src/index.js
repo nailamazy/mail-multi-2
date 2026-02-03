@@ -504,6 +504,37 @@ function pageTemplate(title, body, extraHead = "") {
 
     .hr{border:0;border-top:1px solid var(--border);margin:12px 0}
 
+    /* Checkbox styling */
+    .emailCheckbox{
+      width:20px;
+      height:20px;
+      cursor:pointer;
+      accent-color: var(--brand);
+      flex-shrink:0;
+    }
+    .selectAllCheckbox{
+      width:18px;
+      height:18px;
+      cursor:pointer;
+      accent-color: var(--brand);
+      margin-right:8px;
+    }
+    .mailItem.selected{
+      background: rgba(59,130,246,.12);
+      border-color: rgba(59,130,246,.45);
+    }
+    .bulkActions{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      padding:10px 12px;
+      background: rgba(59,130,246,.08);
+      border:1px solid rgba(59,130,246,.3);
+      border-radius:12px;
+      margin-bottom:10px;
+    }
+
     @media (max-width: 860px){
       .split{grid-template-columns:1fr}
     }
@@ -896,6 +927,7 @@ const PAGES = {
         let ME=null;
         let SELECTED=null;
         let AUTO_REFRESH_INTERVAL=null;
+        let SELECTED_EMAILS=[];
 
         function esc(s){return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));}
 
@@ -1058,10 +1090,27 @@ const PAGES = {
             
             const refreshInfo = silent ? '<span class="muted" style="font-size:11px;margin-left:8px">\ud83d\udd04 Auto (30s)</span>' : '';
             
+            // Bulk actions bar - shown when emails exist
+            let bulkActionsHtml = '';
+            if(j.emails && j.emails.length > 0){
+              const selectedCount = SELECTED_EMAILS.length;
+              bulkActionsHtml = '<div class="bulkActions">'+
+                '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0">'+
+                  '<input type="checkbox" class="selectAllCheckbox" id="selectAllCheck" onclick="toggleSelectAll()" />'+
+                  '<span class="muted" style="font-size:13px">Select All</span>'+
+                '</label>'+
+                (selectedCount > 0 ? 
+                  '<button class="danger" onclick="deleteSelectedEmails()" style="margin-left:auto">'+
+                    'Delete Selected ('+selectedCount+')'+
+                  '</button>' : '')+
+              '</div>';
+            }
+            
             let html = '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">'+
               '<b>Inbox</b>'+refreshInfo+
               '<button class="btn-ghost" onclick="loadEmails()">Refresh</button>'+
-              '</div>';
+              '</div>'+
+              bulkActionsHtml;
             
             if(!j.emails || j.emails.length===0){
               html += '<div class="muted" style="padding:24px;text-align:center;background:rgba(255,255,255,0.03);border-radius:8px;border:1px dashed rgba(148,163,184,0.3)">'+
@@ -1070,14 +1119,23 @@ const PAGES = {
               console.log('⚠️ No emails to display');
             } else {
               for(const m of j.emails){
-                html += '<div class="mailItem">'+
-                  '<div class="mailSubject">'+esc(m.subject||'(no subject)')+'</div>'+
-                  '<div class="mailMeta">From: '+esc(m.from_addr||'')+'</div>'+
-                  '<div class="mailMeta">'+esc(fmtDate(m.date || m.created_at || ""))+'</div>'+
-                  (m.snippet ? '<div class="mailSnippet">'+esc(m.snippet)+'</div>' : '')+
-                  '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'+
-                    '<button class="btn-primary" onclick="openEmail(\\''+m.id+'\\')">View</button>'+
-                    '<button onclick="delEmail(\\''+m.id+'\\')" class="danger">Delete</button>'+
+                const isSelected = SELECTED_EMAILS.includes(m.id);
+                html += '<div class="mailItem'+(isSelected?' selected':'')+'" id="mail_'+m.id+'">'+
+                  '<div style="display:flex;gap:12px;align-items:flex-start">'+
+                    '<input type="checkbox" class="emailCheckbox" '+
+                      'id="check_'+m.id+'" '+
+                      (isSelected?'checked ':'')+
+                      'onclick="toggleEmailSelection(\\''+m.id+'\\')"/>'+
+                    '<div style="flex:1;min-width:0">'+
+                      '<div class="mailSubject">'+esc(m.subject||'(no subject)')+'</div>'+
+                      '<div class="mailMeta">From: '+esc(m.from_addr||'')+'</div>'+
+                      '<div class="mailMeta">'+esc(fmtDate(m.date || m.created_at || ""))+'</div>'+
+                      (m.snippet ? '<div class="mailSnippet">'+esc(m.snippet)+'</div>' : '')+
+                      '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'+
+                        '<button class="btn-primary" onclick="openEmail(\\''+m.id+'\\')">View</button>'+
+                        '<button onclick="delEmail(\\''+m.id+'\\')" class="danger">Delete</button>'+
+                      '</div>'+
+                    '</div>'+
                   '</div>'+
                 '</div>';
               }
@@ -1197,6 +1255,82 @@ const PAGES = {
           if(!confirm('Hapus email ini?')) return;
           const j = await api('/api/emails/'+encodeURIComponent(id), {method:'DELETE'});
           if(!j.ok){ alert(j.error||'gagal'); return; }
+          // Remove from selection if it was selected
+          const idx = SELECTED_EMAILS.indexOf(id);
+          if(idx !== -1) SELECTED_EMAILS.splice(idx, 1);
+          document.getElementById('emailView').style.display='none';
+          await loadEmails();
+        }
+
+        function toggleEmailSelection(id){
+          const idx = SELECTED_EMAILS.indexOf(id);
+          if(idx === -1){
+            SELECTED_EMAILS.push(id);
+          } else {
+            SELECTED_EMAILS.splice(idx, 1);
+          }
+          loadEmails();
+        }
+
+        function toggleSelectAll(){
+          // Get all visible email IDs from the current inbox
+          const checkboxes = document.querySelectorAll('.emailCheckbox');
+          if(checkboxes.length === 0) return;
+          
+          // Check if all are selected
+          const allEmailIds = Array.from(checkboxes).map(cb => cb.id.replace('check_', ''));
+          const allSelected = allEmailIds.every(id => SELECTED_EMAILS.includes(id));
+          
+          if(allSelected){
+            // Deselect all
+            SELECTED_EMAILS = SELECTED_EMAILS.filter(id => !allEmailIds.includes(id));
+          } else {
+            // Select all
+            allEmailIds.forEach(id => {
+              if(!SELECTED_EMAILS.includes(id)){
+                SELECTED_EMAILS.push(id);
+              }
+            });
+          }
+          
+          loadEmails();
+        }
+
+        async function deleteSelectedEmails(){
+          if(SELECTED_EMAILS.length === 0){
+            alert('Tidak ada email yang dipilih.');
+            return;
+          }
+          
+          const count = SELECTED_EMAILS.length;
+          if(!confirm('Hapus '+count+' email yang dipilih?')) return;
+          
+          // Delete all selected emails
+          let successCount = 0;
+          let failCount = 0;
+          
+          for(const id of SELECTED_EMAILS){
+            try{
+              const j = await api('/api/emails/'+encodeURIComponent(id), {method:'DELETE'});
+              if(j.ok) successCount++;
+              else failCount++;
+            } catch(e){
+              console.error('Failed to delete email:', id, e);
+              failCount++;
+            }
+          }
+          
+          // Clear selection
+          SELECTED_EMAILS = [];
+          
+          // Show result
+          if(failCount > 0){
+            alert('Berhasil hapus '+successCount+' email. Gagal: '+failCount);
+          } else {
+            alert('Berhasil hapus '+successCount+' email.');
+          }
+          
+          // Refresh inbox
           document.getElementById('emailView').style.display='none';
           await loadEmails();
         }
@@ -1227,6 +1361,9 @@ const PAGES = {
         window.delAlias = delAlias;
         window.openEmail = openEmail;
         window.delEmail = delEmail;
+        window.toggleEmailSelection = toggleEmailSelection;
+        window.toggleSelectAll = toggleSelectAll;
+        window.deleteSelectedEmails = deleteSelectedEmails;
         window.logout = logout;
 
         (async ()=>{
