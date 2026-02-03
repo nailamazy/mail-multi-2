@@ -52,7 +52,7 @@ SELECT
       WHEN to_addr LIKE '%@%' THEN LOWER(SUBSTR(to_addr, INSTR(to_addr, '@') + 1))
       ELSE 'mazayaa.tech' 
     END,
-    'mazaya.codes'
+    'mazayaa.tech'
   ) as domain,
   user_id, 
   from_addr, 
@@ -75,4 +75,5 @@ ALTER TABLE emails_new RENAME TO emails;
 -- Step 9: Recreate indexes
 CREATE INDEX IF NOT EXISTS idx_emails_user_created ON emails(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_emails_alias_created ON emails(local_part, created_at DESC);
+
 
