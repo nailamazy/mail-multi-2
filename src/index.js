@@ -1563,11 +1563,11 @@ const PAGES = {
               <span class="sidebarIcon">📥</span>
               <span>Inbox</span>
             </a>
-            <div class="sidebarItem" id="navUsers" onclick="showSection('users')">
+            <div class="sidebarItem" id="navUsers" data-section="users">
               <span class="sidebarIcon">👥</span>
               <span>Users</span>
             </div>
-            <div class="sidebarItem" id="navMessages" onclick="showSection('messages')">
+            <div class="sidebarItem" id="navMessages" data-section="messages">
               <span class="sidebarIcon">📧</span>
               <span>Messages</span>
             </div>
@@ -1623,6 +1623,13 @@ const PAGES = {
         let ALL_MESSAGES = [];
         let FILTERED_MESSAGES = [];
         function esc(s){return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));}
+
+        function bindNavigation(){
+          const navUsers = document.getElementById('navUsers');
+          const navMessages = document.getElementById('navMessages');
+          if(navUsers) navUsers.addEventListener('click', () => showSection('users'));
+          if(navMessages) navMessages.addEventListener('click', () => showSection('messages'));
+        }
 
         async function api(path, opts){
           const r = await fetch(path, opts);
@@ -1922,6 +1929,7 @@ const PAGES = {
           showSettings: typeof showSettings,
           logout: typeof logout
         });
+        bindNavigation();
         showSection('users');
         loadUsers().catch(e=>alert(String(e && e.message ? e.message : e)));
       </script>
