@@ -1891,8 +1891,7 @@ const PAGES = {
         
         function showSettings(){
           console.log('showSettings called');
-          const domains = ${JSON.stringify(domainsDisplay)};
-          alert('⚙️ Settings\n\nDomains: ' + domains + '\n\n⚠️ Delete user akan menghapus semua data terkait (sessions, tokens, aliases, emails + raw di R2 jika ada).');
+          alert('⚙️ Settings\\n\\nDomains: ${domainsDisplay}\\n\\n⚠️ Delete user akan menghapus semua data terkait (sessions, tokens, aliases, emails + raw di R2 jika ada).');
         }
 
         async function logout(){
