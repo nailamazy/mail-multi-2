@@ -1625,10 +1625,21 @@ const PAGES = {
         function esc(s){return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));}
 
         function bindNavigation(){
-          const navUsers = document.getElementById('navUsers');
-          const navMessages = document.getElementById('navMessages');
-          if(navUsers) navUsers.addEventListener('click', () => showSection('users'));
-          if(navMessages) navMessages.addEventListener('click', () => showSection('messages'));
+          const items = document.querySelectorAll('.sidebarItem[data-section]');
+          if(!items.length){
+            console.warn('Navigation items not found');
+            return;
+          }
+          items.forEach(el => {
+            const section = el.getAttribute('data-section');
+            el.addEventListener('click', () => {
+              if(typeof showSection === 'function'){
+                showSection(section);
+              } else {
+                console.error('showSection unavailable when clicking nav');
+              }
+            });
+          });
         }
 
         async function api(path, opts){
@@ -1929,6 +1940,7 @@ const PAGES = {
           showSettings: typeof showSettings,
           logout: typeof logout
         });
+        document.addEventListener('DOMContentLoaded', bindNavigation);
         bindNavigation();
         showSection('users');
         loadUsers().catch(e=>alert(String(e && e.message ? e.message : e)));
