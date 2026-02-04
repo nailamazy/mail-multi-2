@@ -1753,20 +1753,33 @@ const PAGES = {
         }
 
         function showSection(section){
+          console.log('showSection called with:', section);
           CURRENT_SECTION = section;
           
           // Update nav active state
-          document.getElementById('navUsers').classList.remove('active');
-          document.getElementById('navMessages').classList.remove('active');
+          const navUsers = document.getElementById('navUsers');
+          const navMessages = document.getElementById('navMessages');
+          const sectionUsers = document.getElementById('sectionUsers');
+          const sectionMessages = document.getElementById('sectionMessages');
+          
+          if(!navUsers || !navMessages || !sectionUsers || !sectionMessages){
+            console.error('Missing elements:', {navUsers, navMessages, sectionUsers, sectionMessages});
+            return;
+          }
+          
+          navUsers.classList.remove('active');
+          navMessages.classList.remove('active');
           
           if(section === 'users'){
-            document.getElementById('navUsers').classList.add('active');
-            document.getElementById('sectionUsers').style.display = 'block';
-            document.getElementById('sectionMessages').style.display = 'none';
+            navUsers.classList.add('active');
+            sectionUsers.style.display = 'block';
+            sectionMessages.style.display = 'none';
+            console.log('Switched to users section');
           } else if(section === 'messages'){
-            document.getElementById('navMessages').classList.add('active');
-            document.getElementById('sectionUsers').style.display = 'none';
-            document.getElementById('sectionMessages').style.display = 'block';
+            navMessages.classList.add('active');
+            sectionUsers.style.display = 'none';
+            sectionMessages.style.display = 'block';
+            console.log('Switched to messages section');
             loadAllMessages();
           }
         }
@@ -1877,17 +1890,20 @@ const PAGES = {
         }
         
         function showSettings(){
-          alert('⚙️ Settings\\n\\nDomains: ${domainsDisplay}\\n\\n⚠️ Delete user akan menghapus semua data terkait (sessions, tokens, aliases, emails + raw di R2 jika ada).');
+          console.log('showSettings called');
+          const domains = ${JSON.stringify(domainsDisplay)};
+          alert('⚙️ Settings\n\nDomains: ' + domains + '\n\n⚠️ Delete user akan menghapus semua data terkait (sessions, tokens, aliases, emails + raw di R2 jika ada).');
         }
 
         async function logout(){
+          console.log('logout called');
           if(confirm('Logout dari admin panel?')){
             await fetch('/api/auth/logout',{method:'POST'});
             location.href='/login';
           }
         }
 
-        // Expose functions for inline handlers
+        // Expose functions for inline handlers - MUST BE BEFORE INIT
         window.showSection = showSection;
         window.showSettings = showSettings;
         window.logout = logout;
@@ -1901,6 +1917,12 @@ const PAGES = {
         window.closeMessageViewer = closeMessageViewer;
 
         // Initialize
+        console.log('Admin panel initializing...');
+        console.log('Functions available:', {
+          showSection: typeof showSection,
+          showSettings: typeof showSettings,
+          logout: typeof logout
+        });
         showSection('users');
         loadUsers().catch(e=>alert(String(e && e.message ? e.message : e)));
       </script>
