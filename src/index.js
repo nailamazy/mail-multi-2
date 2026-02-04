@@ -1563,9 +1563,13 @@ const PAGES = {
               <span class="sidebarIcon">📥</span>
               <span>Inbox</span>
             </a>
-            <div class="sidebarItem active">
+            <div class="sidebarItem" id="navUsers" onclick="showSection('users')">
               <span class="sidebarIcon">👥</span>
               <span>Users</span>
+            </div>
+            <div class="sidebarItem" id="navMessages" onclick="showSection('messages')">
+              <span class="sidebarIcon">📧</span>
+              <span>Messages</span>
             </div>
             <div class="sidebarItem" onclick="showSettings()">
               <span class="sidebarIcon">⚙️</span>
@@ -1583,19 +1587,41 @@ const PAGES = {
 
         <!-- Main Content -->
         <div class="adminContent">
-          <div class="contentHeader">
-            <div class="contentTitle">User Management</div>
-            <div class="contentSubtitle">
-              <span class="muted">Domains: <span class="kbd">${domainsDisplay}</span></span>
+          <!-- Users Section -->
+          <div id="sectionUsers">
+            <div class="contentHeader">
+              <div class="contentTitle">User Management</div>
+              <div class="contentSubtitle">
+                <span class="muted">Domains: <span class="kbd">${domainsDisplay}</span></span>
+              </div>
             </div>
+            <div id="users"></div>
           </div>
 
-          <div id="users"></div>
+          <!-- Messages Section -->
+          <div id="sectionMessages" style="display:none">
+            <div class="contentHeader">
+              <div class="contentTitle">All Messages</div>
+              <div class="contentSubtitle">
+                <span class="muted">View semua email dari semua user</span>
+              </div>
+            </div>
+            
+            <div style="margin-bottom:16px">
+              <input id="searchUser" placeholder="Filter by user email..." style="max-width:400px" oninput="filterMessages(this.value)" />
+            </div>
+            
+            <div id="messagesList"></div>
+            <div id="emailViewer" style="display:none;margin-top:20px"></div>
+          </div>
         </div>
       </div>
 
       <script>
         const DEFAULT_DOMAIN = ${JSON.stringify(domains[0] || "")};
+        let CURRENT_SECTION = 'users';
+        let ALL_MESSAGES = [];
+        let FILTERED_MESSAGES = [];
         function esc(s){return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));}
 
         async function api(path, opts){
@@ -1726,6 +1752,130 @@ const PAGES = {
           await loadUsers();
         }
 
+        function showSection(section){
+          CURRENT_SECTION = section;
+          
+          // Update nav active state
+          document.getElementById('navUsers').classList.remove('active');
+          document.getElementById('navMessages').classList.remove('active');
+          
+          if(section === 'users'){
+            document.getElementById('navUsers').classList.add('active');
+            document.getElementById('sectionUsers').style.display = 'block';
+            document.getElementById('sectionMessages').style.display = 'none';
+          } else if(section === 'messages'){
+            document.getElementById('navMessages').classList.add('active');
+            document.getElementById('sectionUsers').style.display = 'none';
+            document.getElementById('sectionMessages').style.display = 'block';
+            loadAllMessages();
+          }
+        }
+        
+        async function loadAllMessages(){
+          const box = document.getElementById('messagesList');
+          box.innerHTML = '<div class="muted">Loading...</div>';
+          
+          try{
+            const j = await api('/api/admin/emails');
+            if(!j.ok){
+              box.innerHTML = '<div class="muted">Error: '+esc(j.error||'gagal')+'</div>';
+              return;
+            }
+            
+            ALL_MESSAGES = j.emails || [];
+            FILTERED_MESSAGES = ALL_MESSAGES;
+            renderMessages();
+          } catch(e){
+            box.innerHTML = '<div class="muted">Error loading messages</div>';
+          }
+        }
+        
+        function filterMessages(query){
+          const q = query.toLowerCase().trim();
+          if(!q){
+            FILTERED_MESSAGES = ALL_MESSAGES;
+          } else {
+            FILTERED_MESSAGES = ALL_MESSAGES.filter(m => 
+              (m.user_email||'').toLowerCase().includes(q) ||
+              (m.username||'').toLowerCase().includes(q)
+            );
+          }
+          renderMessages();
+        }
+        
+        function renderMessages(){
+          const box = document.getElementById('messagesList');
+          
+          if(FILTERED_MESSAGES.length === 0){
+            box.innerHTML = '<div class="muted">Tidak ada pesan.</div>';
+            return;
+          }
+          
+          let html = '';
+          for(const m of FILTERED_MESSAGES){
+            const userInfo = esc((m.username||'unknown')+' ('+m.user_email+')');
+            const fromAddr = esc(m.from_addr||'');
+            const subject = esc(m.subject||'(no subject)');
+            const snippet = esc((m.snippet||'').substring(0,100));
+            const date = new Date(m.created_at*1000).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+            
+            html += '<div class="userCard" style="cursor:pointer" onclick="viewMessage(\''+esc(m.id)+'\')">'+
+              '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">'+
+                '<div style="flex:1;min-width:0">'+
+                  '<div style="font-size:13px;color:var(--muted);margin-bottom:4px">👤 '+userInfo+'</div>'+
+                  '<div style="font-weight:700;font-size:14px;margin-bottom:4px">'+subject+'</div>'+
+                  '<div style="font-size:12px;color:var(--muted)">From: '+fromAddr+'</div>'+
+                  '<div style="margin-top:6px;font-size:13px;color:var(--text);opacity:0.8">'+snippet+'...</div>'+
+                '</div>'+
+                '<div style="text-align:right">'+
+                  '<div class="pill" style="font-size:11px">'+date+'</div>'+
+                '</div>'+
+              '</div>'+
+            '</div>';
+          }
+          
+          box.innerHTML = html;
+        }
+        
+        async function viewMessage(id){
+          const viewer = document.getElementById('emailViewer');
+          viewer.innerHTML = '<div class="muted">Loading...</div>';
+          viewer.style.display = 'block';
+          
+          try{
+            const j = await api('/api/admin/emails/'+encodeURIComponent(id));
+            if(!j.ok){
+              viewer.innerHTML = '<div class="muted">Error: '+esc(j.error||'gagal')+'</div>';
+              return;
+            }
+            
+            const e = j.email;
+            const userInfo = esc((e.username||'unknown')+' ('+e.user_email+')');
+            
+            viewer.innerHTML = 
+              '<div class="card">'+
+                '<div style="display:flex;justify-content:space-between;margin-bottom:16px">'+
+                  '<button onclick="closeMessageViewer()" class="btn-ghost">← Back</button>'+
+                '</div>'+
+                '<div class="paper" style="margin-bottom:12px">'+
+                  '<div style="margin-bottom:8px"><b>User:</b> '+userInfo+'</div>'+
+                  '<div style="margin-bottom:8px"><b>From:</b> '+esc(e.from_addr||'')+'</div>'+
+                  '<div style="margin-bottom:8px"><b>To:</b> '+esc(e.to_addr||'')+'</div>'+
+                  '<div style="margin-bottom:8px"><b>Subject:</b> '+esc(e.subject||'')+'</div>'+
+                  '<div style="margin-bottom:8px"><b>Date:</b> '+esc(e.date||'')+'</div>'+
+                '</div>'+
+                (e.html ? '<iframe class="mailFrame" srcdoc="'+esc(e.html)+'"></iframe>' : 
+                         '<div class="paper"><pre class="mailText">'+esc(e.text||'')+'</pre></div>')+
+              '</div>';
+          } catch(e){
+            viewer.innerHTML = '<div class="muted">Error loading email</div>';
+          }
+        }
+        
+        function closeMessageViewer(){
+          document.getElementById('emailViewer').style.display = 'none';
+        }
+        
         function showSettings(){
           alert('⚙️ Settings\\n\\nDomains: ${domainsDisplay}\\n\\n⚠️ Delete user akan menghapus semua data terkait (sessions, tokens, aliases, emails + raw di R2 jika ada).');
         }
@@ -1737,6 +1887,8 @@ const PAGES = {
           }
         }
 
+        // Initialize
+        showSection('users');
         loadUsers().catch(e=>alert(String(e && e.message ? e.message : e)));
       </script>
       `
@@ -2419,6 +2571,42 @@ export default {
           }));
 
           return json({ ok: true, users });
+        }
+
+        // NEW: Admin - Get all emails from all users
+        if (path === "/api/admin/emails" && request.method === "GET") {
+          if (me.role !== "admin") return forbidden("Forbidden");
+
+          const rows = await env.DB.prepare(
+            `SELECT e.id, e.from_addr, e.to_addr, e.subject, e.date, e.created_at,
+                    substr(COALESCE(e.text,''), 1, 180) as snippet,
+                    u.username, u.email as user_email
+             FROM emails e
+             JOIN users u ON u.id = e.user_id
+             ORDER BY e.created_at DESC
+             LIMIT 200`
+          ).all();
+
+          return json({ ok: true, emails: rows.results || [] });
+        }
+
+        // NEW: Admin - Get specific email with full content
+        if (path.startsWith("/api/admin/emails/") && request.method === "GET") {
+          if (me.role !== "admin") return forbidden("Forbidden");
+
+          const id = decodeURIComponent(path.slice("/api/admin/emails/".length));
+          const row = await env.DB.prepare(
+            `SELECT e.id, e.from_addr, e.to_addr, e.subject, e.date, e.text, e.html, e.raw_key, e.created_at,
+                    u.username, u.email as user_email
+             FROM emails e
+             JOIN users u ON u.id = e.user_id
+             WHERE e.id = ?`
+          )
+            .bind(id)
+            .first();
+
+          if (!row) return notFound();
+          return json({ ok: true, email: row });
         }
 
         if (path.startsWith("/api/admin/users/") && path.endsWith("/aliases") && request.method === "GET") {
