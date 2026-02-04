@@ -1568,8 +1568,8 @@ const PAGES = {
               <span>Users</span>
             </div>
             <div class="sidebarItem" id="navMessages" data-section="messages">
-              <span class="sidebarIcon">📧</span>
-              <span>Messages</span>
+              <span class="sidebarIcon">📨</span>
+              <span>Pesan User</span>
             </div>
             <div class="sidebarItem" onclick="showSettings()">
               <span class="sidebarIcon">⚙️</span>
@@ -1601,9 +1601,9 @@ const PAGES = {
           <!-- Messages Section -->
           <div id="sectionMessages" style="display:none">
             <div class="contentHeader">
-              <div class="contentTitle">All Messages</div>
+              <div class="contentTitle">Pesan User</div>
               <div class="contentSubtitle">
-                <span class="muted">View semua email dari semua user</span>
+                <span class="muted">Lihat dan baca pesan masuk dari semua user</span>
               </div>
             </div>
             
@@ -1836,6 +1836,10 @@ const PAGES = {
         
         function renderMessages(){
           const box = document.getElementById('messagesList');
+          if(!box){
+            console.error('messagesList not found');
+            return;
+          }
           
           if(FILTERED_MESSAGES.length === 0){
             box.innerHTML = '<div class="muted">Tidak ada pesan.</div>';
@@ -1847,25 +1851,39 @@ const PAGES = {
             const userInfo = esc((m.username||'unknown')+' ('+m.user_email+')');
             const fromAddr = esc(m.from_addr||'');
             const subject = esc(m.subject||'(no subject)');
-            const snippet = esc((m.snippet||'').substring(0,100));
+            const snippet = esc((m.snippet||'').substring(0,120));
             const date = new Date(m.created_at*1000).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
             
-            html += '<div class="userCard" style="cursor:pointer" onclick="viewMessage(\''+esc(m.id)+'\')">'+
+            html += '<div class="userCard" style="cursor:pointer" data-msg-id="'+esc(m.id)+'">'+
               '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">'+
                 '<div style="flex:1;min-width:0">'+
                   '<div style="font-size:13px;color:var(--muted);margin-bottom:4px">👤 '+userInfo+'</div>'+
                   '<div style="font-weight:700;font-size:14px;margin-bottom:4px">'+subject+'</div>'+
                   '<div style="font-size:12px;color:var(--muted)">From: '+fromAddr+'</div>'+
-                  '<div style="margin-top:6px;font-size:13px;color:var(--text);opacity:0.8">'+snippet+'...</div>'+
+                  '<div style="margin-top:6px;font-size:13px;color:var(--text);opacity:0.85">'+snippet+'...</div>'+
                 '</div>'+
                 '<div style="text-align:right">'+
                   '<div class="pill" style="font-size:11px">'+date+'</div>'+
+                  '<button class="btn-ghost" style="margin-top:8px;padding:6px 10px" data-action="open" data-msg-id="'+esc(m.id)+'">Baca</button>'+
                 '</div>'+
               '</div>'+
             '</div>';
           }
           
           box.innerHTML = html;
+
+          // attach click handlers after render
+          box.querySelectorAll('[data-action="open"]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              viewMessage(btn.getAttribute('data-msg-id'));
+            });
+          });
+          box.querySelectorAll('.userCard[data-msg-id]').forEach(card => {
+            card.addEventListener('click', () => {
+              viewMessage(card.getAttribute('data-msg-id'));
+            });
+          });
         }
         
         async function viewMessage(id){
