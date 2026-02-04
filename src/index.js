@@ -1887,6 +1887,19 @@ const PAGES = {
           }
         }
 
+        // Expose functions for inline handlers
+        window.showSection = showSection;
+        window.showSettings = showSettings;
+        window.logout = logout;
+        window.setLimit = setLimit;
+        window.toggleUser = toggleUser;
+        window.delUser = delUser;
+        window.toggleAliases = toggleAliases;
+        window.loadAllMessages = loadAllMessages;
+        window.filterMessages = filterMessages;
+        window.viewMessage = viewMessage;
+        window.closeMessageViewer = closeMessageViewer;
+
         // Initialize
         showSection('users');
         loadUsers().catch(e=>alert(String(e && e.message ? e.message : e)));
