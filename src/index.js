@@ -1383,22 +1383,215 @@ const PAGES = {
     const domainsDisplay = domains.join(', ');
 
     return pageTemplate(
-      "Admin",
+      "Admin Panel",
       `
-      ${headerHtml({
-        badge: "Admin",
-        subtitle: "Cek user yang daftar & atur limit",
-        rightHtml: `
-          <a href="/app" class="pill">Inbox</a>
-          <button class="danger" onclick="logout()">Logout</button>
-        `,
-      })}
+      <style>
+        .adminLayout{
+          display:grid;
+          grid-template-columns:280px 1fr;
+          gap:0;
+          min-height:calc(100vh - 40px);
+          margin:-18px;
+        }
+        .adminSidebar{
+          background:
+            linear-gradient(180deg, rgba(255,255,255,.04), transparent 40%),
+            var(--card);
+          border-right:1px solid var(--border);
+          padding:20px 0;
+          position:sticky;
+          top:0;
+          height:100vh;
+          overflow-y:auto;
+        }
+        .adminContent{
+          padding:20px 24px;
+          overflow-y:auto;
+        }
+        .sidebarBrand{
+          padding:0 20px 20px;
+          border-bottom:1px solid var(--border);
+          margin-bottom:12px;
+        }
+        .sidebarBrandTitle{
+          display:flex;
+          align-items:center;
+          gap:10px;
+          font-weight:900;
+          font-size:16px;
+          margin-bottom:4px;
+        }
+        .sidebarBrandSub{
+          color:var(--muted);
+          font-size:12px;
+        }
+        .sidebarNav{
+          padding:0 12px;
+        }
+        .sidebarItem{
+          display:flex;
+          align-items:center;
+          gap:12px;
+          padding:12px 12px;
+          margin:4px 0;
+          border-radius:12px;
+          color:var(--text);
+          text-decoration:none;
+          cursor:pointer;
+          transition:all .2s ease;
+          border:1px solid transparent;
+        }
+        .sidebarItem:hover{
+          background:rgba(59,130,246,.08);
+          border-color:rgba(59,130,246,.2);
+          text-decoration:none;
+        }
+        .sidebarItem.active{
+          background:rgba(59,130,246,.15);
+          border-color:rgba(59,130,246,.35);
+          font-weight:600;
+        }
+        .sidebarIcon{
+          font-size:18px;
+          width:20px;
+          text-align:center;
+        }
+        .sidebarLogout{
+          margin-top:auto;
+          padding:12px;
+          border-top:1px solid var(--border);
+        }
+        .contentHeader{
+          margin-bottom:20px;
+        }
+        .contentTitle{
+          font-size:24px;
+          font-weight:900;
+          margin-bottom:6px;
+        }
+        .contentSubtitle{
+          color:var(--muted);
+          font-size:13px;
+        }
+        .userCard{
+          background:
+            linear-gradient(180deg, rgba(255,255,255,.04), transparent 50%),
+            var(--card);
+          border:1px solid var(--border);
+          border-radius:16px;
+          padding:18px;
+          margin-bottom:12px;
+          transition:all .2s ease;
+        }
+        .userCard:hover{
+          border-color:rgba(96,165,250,.35);
+          transform:translateY(-1px);
+          box-shadow:0 4px 16px rgba(0,0,0,.3);
+        }
+        .userHeader{
+          display:flex;
+          justify-content:space-between;
+          align-items:flex-start;
+          gap:12px;
+          flex-wrap:wrap;
+          margin-bottom:12px;
+        }
+        .userInfo{
+          flex:1;
+          min-width:200px;
+        }
+        .userName{
+          font-weight:700;
+          font-size:15px;
+          margin-bottom:4px;
+        }
+        .userEmail{
+          color:var(--muted);
+          font-size:13px;
+        }
+        .userBadges{
+          display:flex;
+          gap:6px;
+          flex-wrap:wrap;
+          margin-top:8px;
+        }
+        .userActions{
+          display:grid;
+          grid-template-columns:1fr 1fr;
+          gap:10px;
+          margin-top:12px;
+        }
+        .limitInput{
+          display:flex;
+          gap:8px;
+          align-items:center;
+          grid-column:1/-1;
+        }
+        .limitInput input{
+          width:100px;
+          padding:8px 10px;
+        }
+        @media (max-width: 860px){
+          .adminLayout{
+            grid-template-columns:1fr;
+          }
+          .adminSidebar{
+            display:none;
+          }
+          .adminContent{
+            padding:14px;
+          }
+          .userActions{
+            grid-template-columns:1fr;
+          }
+        }
+      </style>
 
-      <div class="card">
-        <b>Users</b>
-        <div class="muted" style="margin-top:6px">Domains: <span class="kbd">${domainsDisplay}</span></div>
-        <div class="muted" style="margin-top:6px">⚠️ Delete akan menghapus data user (sessions, tokens, aliases, emails) + raw email di R2 jika ada.</div>
-        <div id="users" style="margin-top:12px"></div>
+      <div class="adminLayout">
+        <!-- Sidebar -->
+        <div class="adminSidebar">
+          <div class="sidebarBrand">
+            <div class="sidebarBrandTitle">
+              ${LOGO_SVG}
+              <span>Admin Panel</span>
+            </div>
+            <div class="sidebarBrandSub">Email Management</div>
+          </div>
+          
+          <div class="sidebarNav">
+            <a href="/app" class="sidebarItem">
+              <span class="sidebarIcon">📥</span>
+              <span>Inbox</span>
+            </a>
+            <div class="sidebarItem active">
+              <span class="sidebarIcon">👥</span>
+              <span>Users</span>
+            </div>
+            <div class="sidebarItem" onclick="showSettings()">
+              <span class="sidebarIcon">⚙️</span>
+              <span>Settings</span>
+            </div>
+          </div>
+
+          <div class="sidebarLogout">
+            <button class="danger" onclick="logout()" style="width:100%">
+              <span style="margin-right:6px">🚪</span>
+              Logout
+            </button>
+          </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="adminContent">
+          <div class="contentHeader">
+            <div class="contentTitle">User Management</div>
+            <div class="contentSubtitle">
+              <span class="muted">Domains: <span class="kbd">${domainsDisplay}</span></span>
+            </div>
+          </div>
+
+          <div id="users"></div>
+        </div>
       </div>
 
       <script>
@@ -1415,7 +1608,6 @@ const PAGES = {
           return j;
         }
 
-
         async function loadUsers(){
           const j = await api('/api/admin/users');
           if(!j.ok){
@@ -1425,39 +1617,34 @@ const PAGES = {
           }
           const box=document.getElementById('users');
           box.innerHTML='';
+          
           for(const u of j.users){
-            const div=document.createElement('div');
-            div.className='listItem';
-            div.style.borderBottom='1px solid var(--border)';
-            div.style.paddingBottom='12px';
-            div.style.paddingTop='12px';
-            div.style.display='block';
-            div.innerHTML =
-              '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">'+
-                '<div style="flex:1;min-width:200px">'+
-                  '<div><b>'+esc(u.username)+'</b> <span class="muted">('+esc(u.email)+')</span></div>'+
-                  '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+
-                    (u.role==='admin' ? '<span class="pill">admin</span>' : '<span class="pill">user</span>')+
-                    (u.disabled?'<span class="pill">disabled</span>':'')+
+            const card = document.createElement('div');
+            card.className = 'userCard';
+            card.innerHTML = 
+              '<div class="userHeader">'+
+                '<div class="userInfo">'+
+                  '<div class="userName">'+esc(u.username)+'</div>'+
+                  '<div class="userEmail">'+esc(u.email)+'</div>'+
+                  '<div class="userBadges">'+
+                    (u.role==='admin' ? '<span class="pill" style="background:rgba(59,130,246,.15);border-color:rgba(59,130,246,.4)">admin</span>' : '<span class="pill">user</span>')+
+                    (u.disabled ? '<span class="pill" style="background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4)">disabled</span>' : '')+
                     '<span class="pill">'+u.alias_count+' mail</span>'+
-                  '</div>'+
-                  '<div class="muted" style="font-size:11px;margin-top:4px">Created: '+esc(u.created_at)+'</div>'+
-                '</div>'+
-                '<div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;width:100%">'+
-                  '<div style="display:flex;gap:8px;align-items:center;flex:1;min-width:200px">'+
-                    '<label style="font-size:12px;margin:0;white-space:nowrap;color:var(--muted)">Limit:</label>'+
-                    '<input id="lim_'+esc(u.id)+'" value="'+u.alias_limit+'" style="width:80px;padding:8px" />'+
-                    '<button class="btn-primary" style="flex-shrink:0" onclick="setLimit(\\''+esc(u.id)+'\\')">Set</button>'+
-                  '</div>'+
-                  '<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%">'+
-                    '<button onclick="toggleAliases(\\''+esc(u.id)+'\\')" class="btn-ghost" style="flex:1">📧 Lihat Mail</button>'+
-                    '<button onclick="toggleUser(\\''+esc(u.id)+'\\','+(u.disabled?0:1)+')" class="danger" style="flex:1">'+(u.disabled?'✓ Enable':'✕ Disable')+'</button>'+
-                    '<button onclick="delUser(\\''+encodeURIComponent(u.id)+'\\')" class="danger" style="flex:1">🗑 Delete</button>'+
                   '</div>'+
                 '</div>'+
               '</div>'+
-              '<div id="aliases_'+esc(u.id)+'" style="display:none;margin-top:12px"></div>';
-            box.appendChild(div);
+              '<div class="userActions">'+
+                '<div class="limitInput">'+
+                  '<label style="font-size:12px;color:var(--muted);white-space:nowrap">Mail Limit:</label>'+
+                  '<input id="lim_'+esc(u.id)+'" value="'+u.alias_limit+'" type="number" />'+
+                  '<button class="btn-primary" onclick="setLimit(\\''+esc(u.id)+'\\')">Update</button>'+
+                '</div>'+
+                '<button onclick="toggleAliases(\\''+esc(u.id)+'\\')" class="btn-ghost">📧 Lihat Mail</button>'+
+                '<button onclick="toggleUser(\\''+esc(u.id)+'\\','+(u.disabled?0:1)+')" class="'+(u.disabled?'btn-primary':'danger')+'">'+(u.disabled?'✓ Enable':'✕ Disable')+'</button>'+
+                '<button onclick="delUser(\\''+encodeURIComponent(u.id)+'\\')" class="danger">🗑 Delete</button>'+
+              '</div>'+
+              '<div id="aliases_'+esc(u.id)+'" style="display:none;margin-top:14px"></div>';
+            box.appendChild(card);
           }
         }
 
@@ -1465,13 +1652,11 @@ const PAGES = {
           const aliasBox = document.getElementById('aliases_'+userId);
           if(!aliasBox) return;
 
-          // Toggle visibility
           if(aliasBox.style.display !== 'none' && aliasBox.innerHTML !== ''){
             aliasBox.style.display = 'none';
             return;
           }
 
-          // Load aliases
           aliasBox.innerHTML = '<div class="muted">Loading...</div>';
           aliasBox.style.display = 'block';
 
@@ -1482,20 +1667,20 @@ const PAGES = {
           }
 
           if(j.aliases.length === 0){
-            aliasBox.innerHTML = '<div class="muted" style="padding:12px;background:rgba(255,255,255,.02);border-radius:12px">User ini belum membuat mail.</div>';
+            aliasBox.innerHTML = '<div class="muted" style="padding:12px;background:rgba(255,255,255,.02);border-radius:12px;border:1px solid var(--border)">User ini belum membuat mail.</div>';
             return;
           }
 
-          let html = '<div style="padding:10px;background:rgba(255,255,255,.02);border-radius:12px;border:1px solid var(--border)">';
-          html += '<div class="muted" style="margin-bottom:10px;font-size:13px"><b>📧 Daftar Mail:</b></div>';
+          let html = '<div style="padding:14px;background:rgba(255,255,255,.02);border-radius:12px;border:1px solid var(--border)">';
+          html += '<div class="muted" style="margin-bottom:12px;font-size:13px;font-weight:600">📧 Daftar Mail:</div>';
           for(const a of j.aliases){
             const aliasDomain = a.domain || DEFAULT_DOMAIN;
-            html += '<div style="padding:10px 0;border-bottom:1px solid rgba(71,85,105,.25);display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">'+
-              '<div style="flex:1;min-width:0;overflow-wrap:break-word">'+
-                '<div style="font-family:ui-monospace,monospace;font-size:12.5px;word-break:break-all"><b>'+esc(a.local_part)+'@'+esc(aliasDomain)+'</b></div>'+
-                '<div class="muted" style="font-size:11px;margin-top:3px">'+esc(new Date(a.created_at).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}))+'</div>'+
+            html += '<div style="padding:10px 0;border-bottom:1px solid rgba(71,85,105,.2);display:flex;justify-content:space-between;align-items:center;gap:10px">'+
+              '<div style="flex:1;min-width:0">'+
+                '<div style="font-family:ui-monospace,monospace;font-size:13px;word-break:break-all;font-weight:600">'+esc(a.local_part)+'@'+esc(aliasDomain)+'</div>'+
+                '<div class="muted" style="font-size:11px;margin-top:2px">'+new Date(a.created_at*1000).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'})+'</div>'+
               '</div>'+
-              '<div style="flex-shrink:0">'+
+              '<div>'+
                 (a.disabled ? '<span class="pill" style="background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);font-size:11px">disabled</span>' : '<span class="pill" style="background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.4);font-size:11px">active</span>')+
               '</div>'+
             '</div>';
@@ -1504,16 +1689,20 @@ const PAGES = {
           aliasBox.innerHTML = html;
         }
 
-
         async function setLimit(id){
           const v = document.getElementById('lim_'+id).value;
           const lim = parseInt(v,10);
+          if(isNaN(lim) || lim < 0){
+            alert('Limit harus angka positif');
+            return;
+          }
           const j = await api('/api/admin/users/'+encodeURIComponent(id), {
             method:'PATCH',
             headers:{'content-type':'application/json'},
             body:JSON.stringify({alias_limit:lim})
           });
           if(!j.ok){ alert(j.error||'gagal'); return; }
+          alert('Limit berhasil diupdate!');
           await loadUsers();
         }
 
@@ -1529,16 +1718,23 @@ const PAGES = {
 
         async function delUser(encId){
           const id = decodeURIComponent(encId);
-          if(!confirm('Hapus user ini?\\n\\nID: '+id+'\\n\\nAksi ini akan menghapus: sessions, reset tokens, mail aliases, emails (dan raw di R2 jika ada).')) return;
+          if(!confirm('⚠️ Hapus user ini?\\n\\nID: '+id+'\\n\\nAksi ini akan menghapus:\\n• Sessions\\n• Reset tokens\\n• Mail aliases\\n• Emails (dan raw di R2 jika ada)\\n\\nAksi ini TIDAK BISA dibatalkan!')) return;
 
           const j = await api('/api/admin/users/'+encodeURIComponent(id), { method:'DELETE' });
           if(!j.ok){ alert(j.error||'gagal'); return; }
+          alert('User berhasil dihapus!');
           await loadUsers();
         }
 
+        function showSettings(){
+          alert('⚙️ Settings\\n\\nDomains: ${domainsDisplay}\\n\\n⚠️ Delete user akan menghapus semua data terkait (sessions, tokens, aliases, emails + raw di R2 jika ada).');
+        }
+
         async function logout(){
-          await fetch('/api/auth/logout',{method:'POST'});
-          location.href='/login';
+          if(confirm('Logout dari admin panel?')){
+            await fetch('/api/auth/logout',{method:'POST'});
+            location.href='/login';
+          }
         }
 
         loadUsers().catch(e=>alert(String(e && e.message ? e.message : e)));
